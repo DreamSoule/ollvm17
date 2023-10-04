@@ -1,6 +1,8 @@
 # 前言
 项目大致内容与我之前发布的[OLLVM16](https://github.com/DreamSoule/ollvm16)区别不大, 仅对LLVM17做了兼容性修复<br>
 感兴趣的可以自己下载之前项目对比查看修改部分
+
+**OLLVM 17.0.2版本已上传到Release内, 由于相关文件没什么变动教程就不更新了**
 # 混淆功能列表
 > 命令行添加位置: 项目->属性->C/C++->Command Line
 ```bash
@@ -18,7 +20,8 @@
 - igv # 间接全局变量
 ```
 # 功能全开
-> 命令行添加位置: 项目->属性->C/C++->命令行
+> 命令行添加位置: 项目->属性->C/C++->命令行<br>
+> fla和bcf会导致编译速度很慢且文件很大, 自行斟酌要不要开
 ```bash
 -mllvm -fla -mllvm -bcf -mllvm -bcf_prob=80 -mllvm -bcf_loop=3 -mllvm -sobf -mllvm -icall -mllvm -ibr -mllvm -igv -mllvm -sub -mllvm -sub_loop=3 -mllvm -split -mllvm -split_num=5
 ```
