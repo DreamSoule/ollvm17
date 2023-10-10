@@ -147,7 +147,8 @@ class CallSiteBase {
     return true;
   }
 
-  /// Set the callee to the specified value.  Unlike the function of the same
+// Soule
+  /* /// Set the callee to the specified value.  Unlike the function of the same
   /// name on CallBase, does not modify the type!
   void setCalledFunction(Value* V) {
     const auto elem_type = [&V]() {
@@ -162,7 +163,7 @@ class CallSiteBase {
     // assert(elem_type() == cast<CallBase>(getInstruction())->getFunctionType() &&
     //        "New callee type does not match FunctionType on call");
     *getCallee() = V;
-  }
+  }*/
 
   /// Return the intrinsic ID of the intrinsic called by this CallSite,
   /// or Intrinsic::not_intrinsic if the called function is not an
