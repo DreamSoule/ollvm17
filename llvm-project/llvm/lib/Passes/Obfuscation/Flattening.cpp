@@ -210,6 +210,7 @@ bool FlatteningPass::flatten(Function &F) {
     }
 
     fixStack(F);
+    return true;
 }
 
 FlatteningPass *llvm::createFlattening(bool flag) {
