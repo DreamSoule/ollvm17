@@ -8,6 +8,25 @@
 ```cpp
 int function_fla_bcf_(int a);
 ```
+# 图例
+<details> 
+<summary>函数源码</summary>
+<img src="https://github.com/DreamSoule/ollvm17/blob/main/resource/fn_source.png"/>
+</details>
+<details> 
+<summary>原版IDA反编译</summary>
+<img src="https://github.com/DreamSoule/ollvm17/blob/main/resource/fn_ida.png"/>
+</details>
+<details> 
+<summary>函数名加_fla_</summary>
+<img src="https://github.com/DreamSoule/ollvm17/blob/main/resource/fn_ida_fla.png"/>
+</details>
+<details> 
+<summary>函数名加_fla_bcf_</summary>
+<img src="https://github.com/DreamSoule/ollvm17/blob/main/resource/fn_ida_fla_bcf.png"/>
+</details>
+</h7>
+
 # 混淆功能列表
 > 命令行添加位置: 项目->属性->C/C++->Command Line
 ```bash
