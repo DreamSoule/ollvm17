@@ -18,7 +18,7 @@ add_llvm_component_library(LLVMPasses
   Obfuscation/IndirectBranch.cpp
   Obfuscation/IndirectCall.cpp
   Obfuscation/IndirectGlobalVariable.cpp
-  
+
   ADDITIONAL_HEADER_DIRS
   ${LLVM_MAIN_INCLUDE_DIR}/llvm
   ${LLVM_MAIN_INCLUDE_DIR}/llvm/Passes

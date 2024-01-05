@@ -19,6 +19,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 #include <random>
 
 PreservedAnalyses IndirectBranchPass::run(Module &M, ModuleAnalysisManager &AM) {
+  if (this->flag) {
+    outs() << "[Soule] force.run.IndirectBranchPass\n";
+  }
   for (Function &Fn : M) {
     if (toObfuscate(flag, &Fn, "ibr")) {
 
@@ -26,8 +29,7 @@ PreservedAnalyses IndirectBranchPass::run(Module &M, ModuleAnalysisManager &AM) 
         continue;
       }
 
-      if (Fn.empty() || Fn.hasLinkOnceLinkage() ||
-          Fn.getSection() == ".text.startup") {
+      if (Fn.empty() || Fn.hasLinkOnceLinkage() || Fn.getSection() == ".text.startup") {
         continue;
       }
 

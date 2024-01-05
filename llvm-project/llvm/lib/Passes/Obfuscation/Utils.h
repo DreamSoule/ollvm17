@@ -22,6 +22,9 @@
 #define CONST_I32(V) ConstantInt::get(TYPE_I32, V, false)
 #define CONST(T, V) ConstantInt::get(T, V)
 extern llvm::LLVMContext *CONTEXT;
+// fla和bcf在混淆部分函数时会报错, 所以无法用命令行开启整体混淆
+// 而且Visual Studio似乎没法把 annotate 传给LLVM, 只能用函数名控制
+extern bool obf_function_name_cmd;
 using namespace std;
 namespace llvm{
     std::string readAnnotate(Function *f); // 读取llvm.global.annotations中的annotation值
@@ -30,6 +33,7 @@ namespace llvm{
     void FixBasicBlockConstantExpr(BasicBlock *BB);
     void FixFunctionConstantExpr(Function *Func);
     string rand_str(int len);
+    // LLVM-MSVC有这个函数, 官方版LLVM没有 (LLVM:17.0.6 | LLVM-MSVC:3.2.6)
     void LowerConstantExpr(Function &F);
-    }
+}
 #endif // LLVM_UTILS_H

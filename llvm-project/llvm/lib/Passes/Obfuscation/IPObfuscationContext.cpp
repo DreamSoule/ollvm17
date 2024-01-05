@@ -105,7 +105,7 @@ namespace llvm
         SmallVector<AttributeSet, 8> ArgAttrVec;
         const AttributeList &PAL = F->getAttributes();
 
-        Params.push_back(Type::getInt32PtrTy(F->getContext()));
+        Params.push_back(Type::getInt32Ty(F->getContext())); // Soule LLVM 17.0.6?  getInt32PtrTy -> getInt32Ty
         ArgAttrVec.push_back(AttributeSet());
 
         unsigned i = 0;

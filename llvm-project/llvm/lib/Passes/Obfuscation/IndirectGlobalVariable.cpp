@@ -20,6 +20,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 PreservedAnalyses IndirectGlobalVariablePass::run(Module &M, ModuleAnalysisManager &AM) {
 
+  if (this->flag) {
+    outs() << "[Soule] force.run.IndirectGlobalVariablePass\n";
+  }
   for (Function &Fn : M) {
     if (!toObfuscate(flag, &Fn, "igv")) {
       continue;

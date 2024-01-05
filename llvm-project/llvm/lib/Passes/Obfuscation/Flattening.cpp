@@ -2,7 +2,7 @@
 #include "CryptoUtils.h"
 #include "Flattening.h"
 #include "SplitBasicBlock.h"
-#include "llvm/Transforms/Utils/LowerSwitch.h"
+//#include "llvm/Transforms/Utils/LowerSwitch.h"
 // namespace
 using namespace llvm;
 using std::vector;
@@ -15,12 +15,9 @@ PreservedAnalyses FlatteningPass::run(Function& F, FunctionAnalysisManager& AM) 
     Function *tmp = &F; // 传入的Function
     // 判断是否需要开启控制流平坦化
     if (toObfuscate(flag, tmp, "fla")) {
-
-      // Lower switch
-      LowerSwitchPass lower;
-      lower.run(F, AM);
-
-      if (flatten(F)) {
+      INIT_CONTEXT(F);
+      // outs()<<"[Soule] debug. "<< F.getName()<<" \n";
+      if (flatten(*tmp)) {
         ++Flattened;
       }
       return PreservedAnalyses::none();
@@ -28,189 +25,85 @@ PreservedAnalyses FlatteningPass::run(Function& F, FunctionAnalysisManager& AM) 
     return PreservedAnalyses::all();
 }
 
+
 bool FlatteningPass::flatten(Function &F) {
-    vector<BasicBlock *> origBB;
-    BasicBlock *loopEntry;
-    BasicBlock *loopEnd;
-    LoadInst *load;
-    SwitchInst *switchI;
-    AllocaInst *switchVar;
-
-    // SCRAMBLER
-    char scrambling_key[16];
-    llvm::cryptoutils->get_bytes(scrambling_key, 16);
-    // END OF SCRAMBLER
-
-    // Save all original BB
-    for (Function::iterator i = F.begin(); i != F.end(); ++i) {
-        BasicBlock *tmp = &*i;
-        origBB.push_back(tmp);
-
-        BasicBlock *bb = &*i;
-        if (isa<InvokeInst>(bb->getTerminator())) {
-          return false;
-        }
-    }
-
-    // Nothing to flatten
-    if (origBB.size() <= 1) {
+    // 基本块数量不超过1则无需平坦化
+    if(F.size() <= 1){
+        //outs() << "\033[0;33mFunction size is lower then one\033[0m\n"; // warning
         return false;
     }
-
-    // Remove first BB
+    // 将除入口块（第一个基本块）以外的基本块保存到一个 vector 容器中，便于后续处理
+    // 首先保存所有基本块
+    vector<BasicBlock*> origBB;
+    for(BasicBlock &BB: F){
+        origBB.push_back(&BB);
+    }
+    // 从vector中去除第一个基本块
     origBB.erase(origBB.begin());
-
-    // Get a pointer on the first BB
-    Function::iterator tmp = F.begin(); //++tmp;
-    BasicBlock *insert = &*tmp;
-
-    // If main begin with an if
-    BranchInst *br = NULL;
-    if (isa<BranchInst>(insert->getTerminator())) {
-        br = cast<BranchInst>(insert->getTerminator());
-    }
-
-    if ((br != NULL && br->isConditional()) ||
-        insert->getTerminator()->getNumSuccessors() > 1) {
-        BasicBlock::iterator i = insert->end();
-        --i;
-
-        if (insert->size() > 1) {
-          --i;
-        }
-
-        BasicBlock *tmpBB = insert->splitBasicBlock(i, "first");
-        origBB.insert(origBB.begin(), tmpBB);
-    }
-
-    // Remove jump
-    insert->getTerminator()->eraseFromParent();
-
-    Type *I32Ty = Type::getInt32Ty(F.getContext());
-    // Create switch variable and set as it
-    switchVar = new AllocaInst(I32Ty, 0, "switchVar", insert);
-    new StoreInst(ConstantInt::get(
-                      I32Ty, llvm::cryptoutils->scramble32(0, scrambling_key)),
-                  switchVar, insert);
-
-    // Create main loop
-    loopEntry = BasicBlock::Create(F.getContext(), "loopEntry", &F, insert);
-    loopEnd = BasicBlock::Create(F.getContext(), "loopEnd", &F, insert);
-
-    load = new LoadInst(I32Ty, switchVar, "switchVar", loopEntry);
-
-    // Move first BB on top
-    insert->moveBefore(loopEntry);
-    BranchInst::Create(loopEntry, insert);
-
-    // loopEnd jump to loopEntry
-    BranchInst::Create(loopEntry, loopEnd);
-
-    BasicBlock *swDefault =
-        BasicBlock::Create(F.getContext(), "switchDefault", &F, loopEnd);
-    BranchInst::Create(loopEnd, swDefault);
-
-    // Create switch instruction itself and set condition
-    switchI = SwitchInst::Create(&*F.begin(), swDefault, 0, loopEntry);
-    switchI->setCondition(load);
-
-    // Remove branch jump from 1st BB and make a jump to the while
-    F.begin()->getTerminator()->eraseFromParent();
-
-    BranchInst::Create(loopEntry, &*F.begin());
-
-    // Put all BB in the switch
-    for (vector<BasicBlock *>::iterator b = origBB.begin(); b != origBB.end();
-         ++b) {
-        BasicBlock *i = *b;
-        ConstantInt *numCase = NULL;
-
-        // Move the BB inside the switch (only visual, no code logic)
-        i->moveBefore(loopEnd);
-
-        // Add case to switch
-        numCase = cast<ConstantInt>(
-            ConstantInt::get(switchI->getCondition()->getType(),
-                             llvm::cryptoutils->scramble32(
-                                 switchI->getNumCases(), scrambling_key)));
-        switchI->addCase(numCase, i);
-    }
-
-    // Recalculate switchVar
-    for (vector<BasicBlock *>::iterator b = origBB.begin(); b != origBB.end();
-         ++b) {
-        BasicBlock *i = *b;
-        ConstantInt *numCase = NULL;
-
-        // Ret BB
-        if (i->getTerminator()->getNumSuccessors() == 0) {
-          continue;
-        }
-
-        // If it's a non-conditional jump
-        if (i->getTerminator()->getNumSuccessors() == 1) {
-          // Get successor and delete terminator
-          BasicBlock *succ = i->getTerminator()->getSuccessor(0);
-          i->getTerminator()->eraseFromParent();
-
-          // Get next case
-          numCase = switchI->findCaseDest(succ);
-
-          // If next case == default case (switchDefault)
-          if (numCase == NULL) {
-            numCase = cast<ConstantInt>(ConstantInt::get(
-                switchI->getCondition()->getType(),
-                llvm::cryptoutils->scramble32(switchI->getNumCases() - 1,
-                                              scrambling_key)));
-          }
-
-          // Update switchVar and jump to the end of loop
-          new StoreInst(numCase, load->getPointerOperand(), i);
-          BranchInst::Create(loopEnd, i);
-          continue;
-        }
-
-        // If it's a conditional jump
-        if (i->getTerminator()->getNumSuccessors() == 2) {
-          // Get next cases
-          ConstantInt *numCaseTrue =
-              switchI->findCaseDest(i->getTerminator()->getSuccessor(0));
-          ConstantInt *numCaseFalse =
-              switchI->findCaseDest(i->getTerminator()->getSuccessor(1));
-
-          // Check if next case == default case (switchDefault)
-          if (numCaseTrue == NULL) {
-            numCaseTrue = cast<ConstantInt>(ConstantInt::get(
-                switchI->getCondition()->getType(),
-                llvm::cryptoutils->scramble32(switchI->getNumCases() - 1,
-                                              scrambling_key)));
-          }
-
-          if (numCaseFalse == NULL) {
-            numCaseFalse = cast<ConstantInt>(ConstantInt::get(
-                switchI->getCondition()->getType(),
-                llvm::cryptoutils->scramble32(switchI->getNumCases() - 1,
-                                              scrambling_key)));
-          }
-
-          // Create a SelectInst
-          BranchInst *br = cast<BranchInst>(i->getTerminator());
-          SelectInst *sel =
-              SelectInst::Create(br->getCondition(), numCaseTrue, numCaseFalse,
-                                 "", i->getTerminator());
-
-          // Erase terminator
-          i->getTerminator()->eraseFromParent();
-
-          // Update switchVar and jump to the end of loop
-          new StoreInst(sel, load->getPointerOperand(), i);
-          BranchInst::Create(loopEnd, i);
-          continue;
+    BasicBlock &entryBB = F.getEntryBlock();
+    // 如果第一个基本块的末尾是条件跳转，单独分离
+    if(BranchInst *br = dyn_cast<BranchInst>(entryBB.getTerminator())){
+        if(br->isConditional()){
+            BasicBlock *newBB = entryBB.splitBasicBlock(br, "newBB");
+            origBB.insert(origBB.begin(), newBB);
         }
     }
 
-    fixStack(F);
-    return true;
+    // 创建分发块和返回块
+    BasicBlock *dispatchBB = BasicBlock::Create(*CONTEXT, "dispatchBB", &F, &entryBB);
+    BasicBlock *returnBB = BasicBlock::Create(*CONTEXT, "returnBB", &F, &entryBB);
+    BranchInst::Create(dispatchBB, returnBB);
+    entryBB.moveBefore(dispatchBB);
+    // 去除第一个基本块末尾的跳转
+    entryBB.getTerminator()->eraseFromParent();
+    // 使第一个基本块跳转到dispatchBB
+    BranchInst *brDispatchBB = BranchInst::Create(dispatchBB, &entryBB);
+
+    // 在入口块插入alloca和store指令创建并初始化switch变量，初始值为随机值
+    int randNumCase = rand();
+    AllocaInst *swVarPtr = new AllocaInst(TYPE_I32, 0, "swVar.ptr", brDispatchBB);
+    new StoreInst(CONST_I32(randNumCase), swVarPtr, brDispatchBB);
+    // 在分发块插入load指令读取switch变量
+    LoadInst *swVar = new LoadInst(TYPE_I32, swVarPtr, "swVar", false, dispatchBB);
+    // 在分发块插入switch指令实现基本块的调度
+    BasicBlock *swDefault = BasicBlock::Create(*CONTEXT, "swDefault", &F, returnBB);
+    BranchInst::Create(returnBB, swDefault);
+    SwitchInst *swInst = SwitchInst::Create(swVar, swDefault, 0, dispatchBB);
+    // 将原基本块插入到返回块之前，并分配case值
+    for(BasicBlock *BB : origBB){
+        BB->moveBefore(returnBB);
+        swInst->addCase(CONST_I32(randNumCase), BB);
+        randNumCase = rand();
+    }
+
+    // 在每个基本块最后添加修改switch变量的指令和跳转到返回块的指令
+    for(BasicBlock *BB : origBB){
+        // retn BB
+        if(BB->getTerminator()->getNumSuccessors() == 0){
+            continue;
+        }
+        // 非条件跳转
+        else if(BB->getTerminator()->getNumSuccessors() == 1){
+            BasicBlock *sucBB = BB->getTerminator()->getSuccessor(0);
+            BB->getTerminator()->eraseFromParent();
+            ConstantInt *numCase = swInst->findCaseDest(sucBB);
+            new StoreInst(numCase, swVarPtr, BB);
+            BranchInst::Create(returnBB, BB);
+        }
+        // 条件跳转
+        else if(BB->getTerminator()->getNumSuccessors() == 2){
+            ConstantInt *numCaseTrue = swInst->findCaseDest(BB->getTerminator()->getSuccessor(0));
+            ConstantInt *numCaseFalse = swInst->findCaseDest(BB->getTerminator()->getSuccessor(1));
+            BranchInst *br = cast<BranchInst>(BB->getTerminator());
+            SelectInst *sel = SelectInst::Create(br->getCondition(), numCaseTrue, numCaseFalse, "", BB->getTerminator());
+            BB->getTerminator()->eraseFromParent();
+            new StoreInst(sel, swVarPtr, BB);
+            BranchInst::Create(returnBB, BB);
+        }
+    }
+    fixStack(F); // 修复逃逸变量和PHI指令
+
+  return true;
 }
 
 FlatteningPass *llvm::createFlattening(bool flag) {

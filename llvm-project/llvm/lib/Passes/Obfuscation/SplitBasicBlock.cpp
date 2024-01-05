@@ -40,8 +40,9 @@ PreservedAnalyses SplitBasicBlockPass::run(Function& F, FunctionAnalysisManager&
     if (toObfuscate(flag, tmp, "split")){ // 判断什么函数需要开启混淆
         split(tmp); // 分割流程
         ++Split; // 计次
+        return PreservedAnalyses::none();
     }
-    return PreservedAnalyses::none();
+    return PreservedAnalyses::all();
 }
 
 /**

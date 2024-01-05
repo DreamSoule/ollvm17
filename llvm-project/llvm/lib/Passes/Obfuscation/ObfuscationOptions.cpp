@@ -36,9 +36,8 @@ static StringRef getNodeString(yaml::Node *n) {
         SmallString<32> Storage;
         StringRef Val = sn->getValue(Storage);
         return Val;
-    } else {
-        return "";
     }
+    return "";
 }
 
 static unsigned long getIntVal(yaml::Node *n) {
@@ -58,9 +57,8 @@ static std::set<std::string> getStringList(yaml::Node *n) {
 bool ObfuscationOptions::skipFunction(const Twine &FName) {
     if (FName.str().find("goron_") == std::string::npos) {
         return hasFilter && FunctionFilter.count(FName.str()) == 0;
-    } else {
-        return true;
     }
+    return true;
 }
 
 void ObfuscationOptions::handleRoot(yaml::Node *n) {

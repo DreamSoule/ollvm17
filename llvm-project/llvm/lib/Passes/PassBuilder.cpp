@@ -270,6 +270,7 @@
 #include "Obfuscation/IndirectGlobalVariable.h" // 间接全局变量
 #include "Obfuscation/IndirectBranch.h" // 间接跳转
 #include "Obfuscation/IndirectCall.h" // 间接调用
+#include "Obfuscation/Utils.h" // 为了控制函数名混淆开关 (bool obf_function_name_cmd;)
 
 using namespace llvm;
 
@@ -419,6 +420,7 @@ static cl::opt<bool> s_obf_bcf("bcf", cl::init(false), cl::desc("BogusControlFlo
 static cl::opt<bool> s_obf_ibr("ibr", cl::init(false), cl::desc("Indirect Branch"));
 static cl::opt<bool> s_obf_igv("igv", cl::init(false), cl::desc("Indirect Global Variable"));
 static cl::opt<bool> s_obf_icall("icall", cl::init(false), cl::desc("Indirect Call"));
+static cl::opt<bool> s_obf_fn_name_cmd("fncmd", cl::init(false), cl::desc("use function name control obfuscation(_ + command + _ | example: function_fla_bcf_)"));
 
 PassBuilder::PassBuilder(TargetMachine *TM, PipelineTuningOptions PTO,
                          std::optional<PGOOptions> PGOOpt,
@@ -455,13 +457,17 @@ PassBuilder::PassBuilder(TargetMachine *TM, PipelineTuningOptions PTO,
   PIC->addClassToPassName(decltype(CREATE_PASS)::name(), NAME);
 #include "PassRegistry.def"
   }
-
+  
   // Soule
   outs() << "[Soule] registerPipelineStartEPCallback\n";
   this->registerPipelineStartEPCallback(
       [](llvm::ModulePassManager &MPM,
          llvm::OptimizationLevel Level) {
         outs() << "[Soule] run.PipelineStartEPCallback\n";
+        obf_function_name_cmd = s_obf_fn_name_cmd;
+        if (obf_function_name_cmd) {
+          outs() << "[Soule] enable function name control obfuscation(_ + command + _ | example: function_fla_)\n";
+        }
         MPM.addPass(StringEncryptionPass(s_obf_sobf)); // 先进行字符串加密 出现字符串加密基本块以后再进行基本块分割和其他混淆 加大解密难度
         llvm::FunctionPassManager FPM;
         FPM.addPass(IndirectCallPass(s_obf_icall)); // 间接调用
@@ -472,6 +478,7 @@ PassBuilder::PassBuilder(TargetMachine *TM, PipelineTuningOptions PTO,
         MPM.addPass(createModuleToFunctionPassAdaptor(std::move(FPM)));
         MPM.addPass(IndirectBranchPass(s_obf_ibr)); // 间接指令 理论上间接指令应该放在最后
         MPM.addPass(IndirectGlobalVariablePass(s_obf_igv)); // 间接全局变量
+        MPM.addPass(RewriteSymbolPass()); // 根据yaml信息 重命名特定symbols
       }
   );
 }

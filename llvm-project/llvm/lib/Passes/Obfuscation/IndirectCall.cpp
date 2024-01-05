@@ -13,9 +13,10 @@ using std::vector;
 PreservedAnalyses IndirectCallPass::run(Function &F, FunctionAnalysisManager &AM){
     // 判断是否需要开启间接调用
     if (toObfuscate(flag, &F, "icall")){
-        doIndirctCall(F);
+      doIndirctCall(F);
+      return PreservedAnalyses::none();
     }
-    return PreservedAnalyses::none();
+    return PreservedAnalyses::all();
 }
 
 bool IndirectCallPass::doIndirctCall(Function &Fn){

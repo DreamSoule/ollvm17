@@ -16,6 +16,7 @@ using namespace llvm;
 using std::vector;
 
 LLVMContext *CONTEXT = nullptr;
+bool obf_function_name_cmd = false;
 
 /**
  * @brief 参考资料:https://www.jianshu.com/p/0567346fd5e8
@@ -82,6 +83,8 @@ bool llvm::toObfuscate(bool flag, Function *f, std::string const &attribute) { /
     if (f->hasAvailableExternallyLinkage() != 0) {
         return false;
     }
+    //outs() << "[Soule] function: " << f->getName().str() << " # annotation: " << readAnnotate(f) << "\n";
+    // 
     // We have to check the nofla flag first
     // Because .find("fla") is true for a string like "fla" or
     // "nofla"
@@ -91,6 +94,17 @@ bool llvm::toObfuscate(bool flag, Function *f, std::string const &attribute) { /
     // If fla annotations
     if (readAnnotate(f).find(attr) != std::string::npos) { // 是否开启XXX
         return true;
+    }
+    // 由于Visual Studio无法传入annotation, 增加一个使用函数名匹配是否单独开关的功能
+    if (obf_function_name_cmd == true) { // 开启使用函数名匹配混淆功能开关
+        if (f->getName().find("_" + attrNo + "_") != StringRef::npos) {
+            outs() << "[Soule] " << attrNo << ".function: " << f->getName().str() << "\n";
+            return false;
+        }
+        if (f->getName().find("_" + attr + "_") != StringRef::npos) {
+            outs() << "[Soule] " << attr << ".function: " << f->getName().str() << "\n";
+            return true;
+        }
     }
     // If fla flag is set
     if (flag == true) { // 开启PASS
@@ -198,24 +212,24 @@ string llvm::rand_str(int len){
     return str;
 }
 
+// LLVM-MSVC有这个函数, 官方版LLVM没有 (LLVM:17.0.6 | LLVM-MSVC:3.2.6)
 void llvm::LowerConstantExpr(Function &F) {
     SmallPtrSet<Instruction *, 8> WorkList;
 
     for (inst_iterator It = inst_begin(F), E = inst_end(F); It != E; ++It) {
         Instruction *I = &*It;
 
-        if (isa<LandingPadInst>(I) || isa<CatchPadInst>(I) ||
-            isa<CatchSwitchInst>(I) || isa<CatchReturnInst>(I))
-                continue;
+        if (isa<LandingPadInst>(I) || isa<CatchPadInst>(I) || isa<CatchSwitchInst>(I) || isa<CatchReturnInst>(I))
+            continue;
         if (auto *II = dyn_cast<IntrinsicInst>(I)) {
-                if (II->getIntrinsicID() == Intrinsic::eh_typeid_for) {
-        continue;
-                }
+            if (II->getIntrinsicID() == Intrinsic::eh_typeid_for) {
+                continue;
+            }
         }
 
         for (unsigned int i = 0; i < I->getNumOperands(); ++i) {
-                if (isa<ConstantExpr>(I->getOperand(i)))
-        WorkList.insert(I);
+            if (isa<ConstantExpr>(I->getOperand(i)))
+                WorkList.insert(I);
         }
     }
 
@@ -225,25 +239,25 @@ void llvm::LowerConstantExpr(Function &F) {
         WorkList.erase(*It);
 
         if (PHINode *PHI = dyn_cast<PHINode>(I)) {
-                for (unsigned int i = 0; i < PHI->getNumIncomingValues(); ++i) {
-        Instruction *TI = PHI->getIncomingBlock(i)->getTerminator();
-        if (ConstantExpr *CE =
-                dyn_cast<ConstantExpr>(PHI->getIncomingValue(i))) {
-          Instruction *NewInst = CE->getAsInstruction();
-          NewInst->insertBefore(TI);
-          PHI->setIncomingValue(i, NewInst);
-          WorkList.insert(NewInst);
-        }
+            for (unsigned int i = 0; i < PHI->getNumIncomingValues(); ++i) {
+                Instruction *TI = PHI->getIncomingBlock(i)->getTerminator();
+                if (ConstantExpr *CE = dyn_cast<ConstantExpr>(PHI->getIncomingValue(i))) {
+                    Instruction *NewInst = CE->getAsInstruction();
+                    NewInst->insertBefore(TI);
+                    PHI->setIncomingValue(i, NewInst);
+                    WorkList.insert(NewInst);
                 }
-        } else {
-                for (unsigned int i = 0; i < I->getNumOperands(); ++i) {
-        if (ConstantExpr *CE = dyn_cast<ConstantExpr>(I->getOperand(i))) {
-          Instruction *NewInst = CE->getAsInstruction();
-          NewInst->insertBefore(I);
-          I->replaceUsesOfWith(CE, NewInst);
-          WorkList.insert(NewInst);
+            }
         }
+        else {
+            for (unsigned int i = 0; i < I->getNumOperands(); ++i) {
+                if (ConstantExpr *CE = dyn_cast<ConstantExpr>(I->getOperand(i))) {
+                    Instruction *NewInst = CE->getAsInstruction();
+                    NewInst->insertBefore(I);
+                    I->replaceUsesOfWith(CE, NewInst);
+                    WorkList.insert(NewInst);
                 }
+            }
         }
     }
 }

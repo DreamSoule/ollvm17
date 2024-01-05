@@ -121,11 +121,12 @@ bool StringEncryptionPass::do_StrEnc(Module &M, ModuleAnalysisManager &AM) {
 }
 
 PreservedAnalyses StringEncryptionPass::run(Module &M, ModuleAnalysisManager &AM) {
-    outs() << "[Soule] run.StringEncryptionPass\n";
-
+  if (this->flag) {
+    outs() << "[Soule] force.run.StringEncryptionPass\n";
     if (do_StrEnc(M, AM))
-        return PreservedAnalyses::none();
-    return PreservedAnalyses::all();
+      return PreservedAnalyses::none();
+  }
+  return PreservedAnalyses::all();
 }
 
 void StringEncryptionPass::getRandomBytes(std::vector<uint8_t> &Bytes,
