@@ -28,7 +28,8 @@ int function_fla_bcf_(int a);
 # 功能全开
 > 命令行添加位置: 项目->属性->C/C++->命令行<br>
 > fla和bcf会导致编译速度很慢且部分函数无法使用<br>
-> 推荐启用fncmd并在需要这俩功能的函数名加上对应的控制符, 例子在: [#更新内容]
+> 推荐启用fncmd并删除-mllvm -fla -mllvm -bcf<br>
+> 然后在需要这俩功能的函数名加上对应的控制符, 例子在: [#更新内容]
 ```bash
 -mllvm -fla -mllvm -bcf -mllvm -bcf_prob=80 -mllvm -bcf_loop=3 -mllvm -sobf -mllvm -icall -mllvm -ibr -mllvm -igv -mllvm -sub -mllvm -sub_loop=3 -mllvm -split -mllvm -split_num=5
 ```
