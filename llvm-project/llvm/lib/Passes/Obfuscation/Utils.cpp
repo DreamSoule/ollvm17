@@ -25,42 +25,49 @@ bool obf_function_name_cmd = false;
  * @return std::string
  */
 std::string llvm::readAnnotate(Function *f){ //取自原版ollvm项目
-    std::string annotation = "";
-    /* Get annotation variable */
-    GlobalVariable *glob=f->getParent()->getGlobalVariable( "llvm.global.annotations" );
-    if ( glob != NULL ){
-        /* Get the array */
-        if ( ConstantArray * ca = dyn_cast<ConstantArray>( glob->getInitializer() ) ){
-            for ( unsigned i = 0; i < ca->getNumOperands(); ++i ){
-                /* Get the struct */
-                if ( ConstantStruct * structAn = dyn_cast<ConstantStruct>( ca->getOperand( i ) ) ){
-                    if ( ConstantExpr * expr = dyn_cast<ConstantExpr>( structAn->getOperand( 0 ) ) ){
-                        /*
-                         * If it's a bitcast we can check if the annotation is concerning
-                         * the current function
-                         */
-                        if ( expr->getOpcode() == Instruction::BitCast && expr->getOperand( 0 ) == f ){
-                            ConstantExpr *note = cast<ConstantExpr>( structAn->getOperand( 1 ) );
-                            /*
-                             * If it's a GetElementPtr, that means we found the variable
-                             * containing the annotations
-                             */
-                            if ( note->getOpcode() == Instruction::GetElementPtr ){
-                                if ( GlobalVariable * annoteStr = dyn_cast<GlobalVariable>( note->getOperand( 0 ) ) ){
-                                    if ( ConstantDataSequential * data = dyn_cast<ConstantDataSequential>( annoteStr->getInitializer() ) ){
-                                        if ( data->isString() ){
-                                            annotation += data->getAsString().lower() + " ";
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
+    std::string annotations = "";
+
+    GlobalVariable *allAnnotations =
+        f->getParent()->getNamedGlobal("llvm.global.annotations");
+
+    if (!allAnnotations)
+        return annotations;
+
+    ConstantArray *allAnnotationsArr = dyn_cast<ConstantArray>(allAnnotations->getOperand(0));
+
+    if (!allAnnotationsArr)
+        return annotations;
+
+    for (size_t i = 0; i < allAnnotationsArr->getNumOperands(); i++)
+    {
+        ConstantStruct* currAnnotationStruct =
+            dyn_cast<ConstantStruct>(allAnnotationsArr->getOperand(i));
+
+        if (currAnnotationStruct == nullptr)
+            continue;
+
+        Function *currAnnotationFn = dyn_cast<Function>(
+            currAnnotationStruct->getOperand(0)->stripPointerCasts());
+
+        if (currAnnotationFn != f)
+            continue;
+
+        GlobalVariable *currAnnotationGV = dyn_cast<GlobalVariable>(
+            currAnnotationStruct->getOperand(1)->stripPointerCasts());
+
+        if (!currAnnotationGV)
+            continue;
+
+        ConstantDataArray *currAnnotationDA =
+            dyn_cast<ConstantDataArray>(currAnnotationGV->getOperand(0));
+
+        if (!currAnnotationDA)
+            continue;
+
+        annotations += (currAnnotationDA->getAsString().str() + " ");
     }
-    return(annotation);
+
+    return annotations;
 }
 
 /**
