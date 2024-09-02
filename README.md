@@ -2,12 +2,8 @@
 项目大致内容与我之前发布的[OLLVM16](https://github.com/DreamSoule/ollvm16)区别不大, 仅对LLVM17做了兼容性修复<br>
 感兴趣的可以自己下载之前项目对比查看修改部分
 # 更新内容
-由于Visual Studio无法传入annotation ~~(也可能是我有问题?)~~<br>
-增加了个使用函数名匹配混淆功能是否在此函数开关的功能
-> 例子:
-```cpp
-int function_fla_bcf_(int a);
-```
+annotation 功能已修复, 感谢 [@Jiang-Night](https://github.com/Jiang-Night)
+
 # 图例
 <details> 
 <summary>函数源码</summary>
@@ -18,11 +14,11 @@ int function_fla_bcf_(int a);
 <img src="https://github.com/DreamSoule/ollvm17/blob/main/resource/fn_ida.png"/>
 </details>
 <details> 
-<summary>函数名加_fla_</summary>
+<summary>开启fla</summary>
 <img src="https://github.com/DreamSoule/ollvm17/blob/main/resource/fn_ida_fla.png"/>
 </details>
 <details> 
-<summary>函数名加_fla_bcf_</summary>
+<summary>开启fla和bcf</summary>
 <img src="https://github.com/DreamSoule/ollvm17/blob/main/resource/fn_ida_fla_bcf.png"/>
 </details>
 </h7>
@@ -42,13 +38,11 @@ int function_fla_bcf_(int a);
 - ibr # 间接分支
 - icall # 间接调用 (call 寄存器)
 - igv # 间接全局变量
-- fncmd # 启用函数名控制混淆功能( function_fla_bcf_(); )
+- fncmd # 启用函数名控制混淆功能,annotation已经修好不建议再用这个  ( function_fla_bcf_(); )
 ```
 # 功能全开
 > 命令行添加位置: 项目->属性->C/C++->命令行<br>
 > fla和bcf会导致编译速度很慢且部分函数无法使用<br>
-> 推荐启用fncmd并删除-mllvm -fla -mllvm -bcf<br>
-> 然后在需要这俩功能的函数名加上对应的控制符, 例子在: [#更新内容]
 ```bash
 -mllvm -fla -mllvm -bcf -mllvm -bcf_prob=80 -mllvm -bcf_loop=3 -mllvm -sobf -mllvm -icall -mllvm -ibr -mllvm -igv -mllvm -sub -mllvm -sub_loop=3 -mllvm -split -mllvm -split_num=5
 ```
