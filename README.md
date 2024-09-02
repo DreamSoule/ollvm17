@@ -32,7 +32,7 @@ annotation 功能已修复, 感谢 [@Jiang-Night](https://github.com/Jiang-Night
 - fla # 控制流平坦化
 - sub # 指令替换(add/and/sub/or/xor)
 -   sub_loop # 指令替换次数, 无限制, 默认1
-- sobf # 字符串混淆(仅窄字符)
+- sobf # 字符串混淆(仅窄字符,只能在命令行中启用,不支持annotation)
 - split # 基本块分割
 -   split_num # 将原基本块分割数量, 无限制, 默认3
 - ibr # 间接分支
