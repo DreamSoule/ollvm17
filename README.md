@@ -46,6 +46,15 @@ annotation 功能已修复, 感谢 [@Jiang-Night](https://github.com/Jiang-Night
 ```bash
 -mllvm -fla -mllvm -bcf -mllvm -bcf_prob=80 -mllvm -bcf_loop=3 -mllvm -sobf -mllvm -icall -mllvm -ibr -mllvm -igv -mllvm -sub -mllvm -sub_loop=3 -mllvm -split -mllvm -split_num=5
 ```
+> annotate使用说明
+```cpp
+// 可传入上面的混淆开关名使此函数强制开启对应混淆功能
+// 也可以传入no开头加功能命强制关闭对应函数的混淆功能, 例如__attribute__((annotate("nofla nobcf nosplit")))
+int __attribute__((annotate("fla bcf igv ibr icall sub split"))) test_ollvm_aa() {
+    std::printf("123aa\n");
+    return 0;
+}
+```
 # 官方LLVM修补教程
 1.下载LLVM官方源码 [LLVM 17.0.6](https://github.com/llvm/llvm-project/releases/tag/llvmorg-17.0.6) 并解压<br>
 2.下载此项目, 将项目内文件替换至官方源码内<br>
