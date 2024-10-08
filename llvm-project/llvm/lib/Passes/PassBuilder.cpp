@@ -458,15 +458,15 @@ PassBuilder::PassBuilder(TargetMachine *TM, PipelineTuningOptions PTO,
 #include "PassRegistry.def"
   }
   
-  // Soule
-  outs() << "[Soule] registerPipelineStartEPCallback\n";
-  this->registerPipelineStartEPCallback(
+  //outs() << "[obf] registerPipelineStartEPCallback\n"; // 优化前
+  //outs() << "[obf] registerOptimizerLastEPCallback\n"; // 优化后
+  this->registerOptimizerLastEPCallback(
       [](llvm::ModulePassManager &MPM,
          llvm::OptimizationLevel Level) {
-        outs() << "[Soule] run.PipelineStartEPCallback\n";
+        outs() << "[obf] run.registerOptimizerLastEPCallback\n";
         obf_function_name_cmd = s_obf_fn_name_cmd;
         if (obf_function_name_cmd) {
-          outs() << "[Soule] enable function name control obfuscation(_ + command + _ | example: function_fla_)\n";
+          outs() << "[obf] enable function name control obfuscation(_ + command + _ | example: function_fla_)\n";
         }
         MPM.addPass(StringEncryptionPass(s_obf_sobf)); // 先进行字符串加密 出现字符串加密基本块以后再进行基本块分割和其他混淆 加大解密难度
         llvm::FunctionPassManager FPM;
