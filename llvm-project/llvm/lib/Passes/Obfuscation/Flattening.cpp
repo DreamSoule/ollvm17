@@ -32,6 +32,11 @@ bool FlatteningPass::flatten(Function &F) {
         //outs() << "\033[0;33mFunction size is lower then one\033[0m\n"; // warning
         return false;
     }
+    // emmmm.......
+    if (F.getName().str().find("$basic_ostream") != std::string::npos) {
+      outs() << "[obf] force_nofla: " << F.getName().str().c_str() << "\n";
+      return false;
+    }
     // 将除入口块（第一个基本块）以外的基本块保存到一个 vector 容器中，便于后续处理
     // 首先保存所有基本块
     vector<BasicBlock*> origBB;
@@ -42,10 +47,12 @@ bool FlatteningPass::flatten(Function &F) {
     origBB.erase(origBB.begin());
     BasicBlock &entryBB = F.getEntryBlock();
     // 如果第一个基本块的末尾是条件跳转，单独分离
+    bool bEntryBB_isConditional = false;
     if(BranchInst *br = dyn_cast<BranchInst>(entryBB.getTerminator())){
         if(br->isConditional()){
             BasicBlock *newBB = entryBB.splitBasicBlock(br, "newBB");
             origBB.insert(origBB.begin(), newBB);
+            bEntryBB_isConditional = true;
         }
     }
 
@@ -55,7 +62,9 @@ bool FlatteningPass::flatten(Function &F) {
     BranchInst::Create(dispatchBB, returnBB);
     entryBB.moveBefore(dispatchBB);
     // 去除第一个基本块末尾的跳转
-    entryBB.getTerminator()->eraseFromParent();
+    if (bEntryBB_isConditional) {
+        entryBB.getTerminator()->eraseFromParent();
+    }
     // 使第一个基本块跳转到dispatchBB
     BranchInst *brDispatchBB = BranchInst::Create(dispatchBB, &entryBB);
 
@@ -85,16 +94,27 @@ bool FlatteningPass::flatten(Function &F) {
         // 非条件跳转
         else if(BB->getTerminator()->getNumSuccessors() == 1){
             BasicBlock *sucBB = BB->getTerminator()->getSuccessor(0);
-            BB->getTerminator()->eraseFromParent();
+            if (bEntryBB_isConditional) {
+                entryBB.getTerminator()->eraseFromParent();
+            }
             ConstantInt *numCase = swInst->findCaseDest(sucBB);
             new StoreInst(numCase, swVarPtr, BB);
             BranchInst::Create(returnBB, BB);
         }
         // 条件跳转
         else if(BB->getTerminator()->getNumSuccessors() == 2){
+            // BranchInst *br = cast<BranchInst>(BB->getTerminator());
+            BranchInst *br = dyn_cast<BranchInst>(BB->getTerminator());
+            if (!br) {
+              //outs() << "[FAILED] dyn_cast<BranchInst>(BB->getTerminator()); " << BB->getName() << "\n";
+              continue;
+            }
+            if (!br->isConditional()) {
+              //outs() << "[FAILED] br->isConditional(); " << BB->getName() << "\n";
+              continue;
+            }
             ConstantInt *numCaseTrue = swInst->findCaseDest(BB->getTerminator()->getSuccessor(0));
             ConstantInt *numCaseFalse = swInst->findCaseDest(BB->getTerminator()->getSuccessor(1));
-            BranchInst *br = cast<BranchInst>(BB->getTerminator());
             SelectInst *sel = SelectInst::Create(br->getCondition(), numCaseTrue, numCaseFalse, "", BB->getTerminator());
             BB->getTerminator()->eraseFromParent();
             new StoreInst(sel, swVarPtr, BB);
@@ -102,8 +122,7 @@ bool FlatteningPass::flatten(Function &F) {
         }
     }
     fixStack(F); // 修复逃逸变量和PHI指令
-
-  return true;
+    return true;
 }
 
 FlatteningPass *llvm::createFlattening(bool flag) {
