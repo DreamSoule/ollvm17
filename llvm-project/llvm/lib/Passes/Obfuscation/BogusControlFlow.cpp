@@ -258,18 +258,16 @@ void BogusControlFlowPass::addBogusFlow(BasicBlock *basicBlock, Function &F) {
     i1 = (BasicBlock::iterator)basicBlock->getFirstNonPHIOrDbgOrLifetime();
   if (basicBlock->getFirstNonPHI()->isEHPad())
     return;
+
   // Fix Verifier.cpp: "CatchPadInst not the first non-PHI instruction in the
   // block.", "The unwind destination does not have an exception handling
   // instruction!"
-  Twine *var;
-  var = new Twine("originalBB");
-  BasicBlock *originalBB = basicBlock->splitBasicBlock(i1, *var);
+  BasicBlock *originalBB = basicBlock->splitBasicBlock(i1, "originalBB");
   DEBUG_WITH_TYPE("gen", errs()
                              << "bcf: First and original basic blocks: ok\n");
 
   // Creating the altered basic block on which the first basicBlock will jump
-  Twine *var3 = new Twine("alteredBB");
-  BasicBlock *alteredBB = createAlteredBasicBlock(originalBB, *var3, &F);
+  BasicBlock *alteredBB = createAlteredBasicBlock(originalBB, "alteredBB", &F);
   DEBUG_WITH_TYPE("gen", errs() << "bcf: Altered basic block: ok\n");
 
   // Now that all the blocks are created,
@@ -288,9 +286,7 @@ void BogusControlFlowPass::addBogusFlow(BasicBlock *basicBlock, Function &F) {
   DEBUG_WITH_TYPE("gen", errs() << "bcf: Value LHS and RHS created\n");
 
   // The always true condition. End of the first block
-  Twine *var4 = new Twine("condition");
-  FCmpInst *condition =
-      new FCmpInst(*basicBlock, FCmpInst::FCMP_TRUE, LHS, RHS, *var4);
+  FCmpInst *condition = new FCmpInst(*basicBlock, FCmpInst::FCMP_TRUE, LHS, RHS, "condition");
   DEBUG_WITH_TYPE("gen", errs() << "bcf: Always true condition created\n");
 
   // Jump to the original basic block if the condition is true or
@@ -315,8 +311,7 @@ void BogusControlFlowPass::addBogusFlow(BasicBlock *basicBlock, Function &F) {
   BasicBlock::iterator i = originalBB->end();
 
   // Split at this point (we only want the terminator in the second part)
-  Twine *var5 = new Twine("originalBBpart2");
-  BasicBlock *originalBBpart2 = originalBB->splitBasicBlock(--i, *var5);
+  BasicBlock *originalBBpart2 = originalBB->splitBasicBlock(--i, "originalBBpart2");
   DEBUG_WITH_TYPE("gen",
                   errs() << "bcf: Terminator part of the original basic block"
                          << " is isolated\n");
@@ -324,11 +319,9 @@ void BogusControlFlowPass::addBogusFlow(BasicBlock *basicBlock, Function &F) {
   // of the altered block.. So we erase the terminator created when splitting.
   originalBB->getTerminator()->eraseFromParent();
   // We add at the end a new always true condition
-  Twine *var6 = new Twine("condition2");
-  FCmpInst *condition2 =
-      new FCmpInst(*originalBB, CmpInst::FCMP_TRUE, LHS, RHS, *var6);
-  BranchInst::Create(originalBBpart2, alteredBB, (Value *)condition2,
-                     originalBB);
+  FCmpInst *condition2 = new FCmpInst(*originalBB, CmpInst::FCMP_TRUE, LHS, RHS, "condition2");
+  BranchInst::Create(originalBBpart2, alteredBB, condition2, originalBB);
+
   DEBUG_WITH_TYPE("gen", errs()
                              << "bcf: Terminator original basic block: ok\n");
   DEBUG_WITH_TYPE("gen", errs() << "bcf: End of addBogusFlow().\n");
@@ -412,7 +405,6 @@ BasicBlock *createAlteredBasicBlock(BasicBlock *basicBlock, const Twine &Name,
     if (i->isBinaryOp()) { // binary instructions
       unsigned opcode = i->getOpcode();
       Instruction *op, *op1 = NULL;
-      Twine *var = new Twine("_");
       // treat differently float or int
       // Binary int
       if (opcode == Instruction::Add || opcode == Instruction::Sub ||
@@ -428,19 +420,19 @@ BasicBlock *createAlteredBasicBlock(BasicBlock *basicBlock, const Twine &Name,
           case 0:                                    // do nothing
             break;
           case 1:
-            op = BinaryOperator::CreateNeg(i->getOperand(0), *var, &*i);
+            op = BinaryOperator::CreateNeg(i->getOperand(0), "_", &*i);
             op1 = BinaryOperator::Create(Instruction::Add, op, i->getOperand(1),
                                          "gen", &*i);
             break;
           case 2:
             op1 = BinaryOperator::Create(Instruction::Sub, i->getOperand(0),
-                                         i->getOperand(1), *var, &*i);
+                                         i->getOperand(1), "_", &*i);
             op = BinaryOperator::Create(Instruction::Mul, op1, i->getOperand(1),
                                         "gen", &*i);
             break;
           case 3:
             op = BinaryOperator::Create(Instruction::Shl, i->getOperand(0),
-                                        i->getOperand(1), *var, &*i);
+                                        i->getOperand(1), "_", &*i);
             break;
           }
         }
@@ -455,13 +447,13 @@ BasicBlock *createAlteredBasicBlock(BasicBlock *basicBlock, const Twine &Name,
           case 0:                                    // do nothing
             break;
           case 1:
-            op = UnaryOperator::CreateFNeg(i->getOperand(0), *var, &*i);
+            op = UnaryOperator::CreateFNeg(i->getOperand(0), "_", &*i);
             op1 = BinaryOperator::Create(Instruction::FAdd, op,
                                          i->getOperand(1), "gen", &*i);
             break;
           case 2:
             op = BinaryOperator::Create(Instruction::FSub, i->getOperand(0),
-                                        i->getOperand(1), *var, &*i);
+                                        i->getOperand(1), "_", &*i);
             op1 = BinaryOperator::Create(Instruction::FMul, op,
                                          i->getOperand(1), "gen", &*i);
             break;
@@ -578,17 +570,15 @@ bool BogusControlFlowPass::doF(Module &M, Function &F) {
   DEBUG_WITH_TYPE("gen", errs() << "bcf: Starting doFinalization...\n");
 
   //  The global values
-  Twine *varX = new Twine("x");
-  Twine *varY = new Twine("y");
   Value *x1 = ConstantInt::get(Type::getInt32Ty(M.getContext()), 0, false);
   Value *y1 = ConstantInt::get(Type::getInt32Ty(M.getContext()), 0, false);
 
   GlobalVariable *x =
       new GlobalVariable(M, Type::getInt32Ty(M.getContext()), false,
-                         GlobalValue::CommonLinkage, (Constant *)x1, *varX);
+                         GlobalValue::CommonLinkage, (Constant *)x1, "_bcf_x");
   GlobalVariable *y =
       new GlobalVariable(M, Type::getInt32Ty(M.getContext()), false,
-                         GlobalValue::CommonLinkage, (Constant *)y1, *varY);
+                         GlobalValue::CommonLinkage, (Constant *)y1, "_bcf_y");
 
   std::vector<Instruction *> toEdit, toDelete;
   BinaryOperator *op, *op1 = NULL;
