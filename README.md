@@ -5,19 +5,19 @@
 annotation 功能已修复, 感谢 [@Jiang-Night](https://github.com/Jiang-Night)
 
 # 图例
-<details> 
+<details>
 <summary>函数源码</summary>
 <img src="https://github.com/DreamSoule/ollvm17/blob/main/resource/fn_source.png"/>
 </details>
-<details> 
+<details>
 <summary>原版IDA反编译</summary>
 <img src="https://github.com/DreamSoule/ollvm17/blob/main/resource/fn_ida.png"/>
 </details>
-<details> 
+<details>
 <summary>开启fla</summary>
 <img src="https://github.com/DreamSoule/ollvm17/blob/main/resource/fn_ida_fla.png"/>
 </details>
-<details> 
+<details>
 <summary>开启fla和bcf</summary>
 <img src="https://github.com/DreamSoule/ollvm17/blob/main/resource/fn_ida_fla_bcf.png"/>
 </details>
@@ -97,13 +97,13 @@ static cl::opt<bool> s_obf_fn_name_cmd("fncmd", cl::init(false), cl::desc("use f
 // 在此函数内直接注册Pipeline回调
 PassBuilder::PassBuilder(...) {
 ...
-  this->registerPipelineStartEPCallback(
+  this->registerOptimizerLastEPCallback(
       [](llvm::ModulePassManager &MPM,
          llvm::OptimizationLevel Level) {
-        outs() << "[Soule] run.PipelineStartEPCallback\n";
+        outs() << "[obf] run.PipelineStartEPCallback\n";
         obf_function_name_cmd = s_obf_fn_name_cmd;
         if (obf_function_name_cmd) {
-          outs() << "[Soule] enable function name control obfuscation(_ + command + _ | example: function_fla_)\n";
+          outs() << "[obf] enable function name control obfuscation(_ + command + _ | example: function_fla_)\n";
         }
         MPM.addPass(StringEncryptionPass(s_obf_sobf)); // 先进行字符串加密 出现字符串加密基本块以后再进行基本块分割和其他混淆 加大解密难度
         llvm::FunctionPassManager FPM;

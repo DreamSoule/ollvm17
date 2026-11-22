@@ -1,5 +1,6 @@
 #ifndef _BOGUSCONTROLFLOW_H_
 #define _BOGUSCONTROLFLOW_H_
+
 // LLVM libs
 #include "llvm/Pass.h"
 #include "llvm/IR/Module.h"
@@ -23,15 +24,20 @@
 #include "llvm/IR/NoFolder.h"
 #include "llvm/Support/TargetSelect.h"
 #include "llvm/Transforms/Utils/Local.h"
+
 // System libs
 #include <list>
 #include <memory>
+
 // User libs
 #include "CryptoUtils.h"
 #include "Utils.h"
+
 using namespace std;
 using namespace llvm;
-namespace llvm{ // 基本块分割
+
+namespace llvm { // 基本块分割
+
     class BogusControlFlowPass : public PassInfoMixin<BogusControlFlowPass>{
         public:
             bool flag;
@@ -44,7 +50,9 @@ namespace llvm{ // 基本块分割
             bool doF(Module &M, Function &F);
             static bool isRequired() { return true; } // 直接返回true即可
     };
+
     BogusControlFlowPass *createBogusControlFlow(bool flag); // 创建基本块分割
+
 }
 
 #endif
